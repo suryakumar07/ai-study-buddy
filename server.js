@@ -98,8 +98,9 @@ app.post('/api/generate', async (req, res) => {
         res.status(200).json(data);
 
     } catch (error) {
-        console.error('API Error:', error);
-        res.status(500).json({ error: 'Failed to generate content from AI. Please check the server logs.' });
+    console.error('API Error:', error);
+    // Send the actual error message back to the frontend
+    res.status(500).json({ error: error.message || 'An unknown server error occurred.' });
     }
 });
 

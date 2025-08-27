@@ -80,9 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
             displayResults(data);
 
         } catch (error) {
-            console.error('Error fetching AI response:', error);
-            alert(`An error occurred: ${error.message}`);
-            resultsSection.classList.add('hidden'); // Hide results on error
+        console.error('Error fetching AI response:', error);
+        // Check if the error object has our specific message from the backend
+        const errorMessage = error.message.includes('HTTP error') 
+            ? error.message 
+            : `Server Error: ${error.message}`;
+        alert(`An error occurred: ${errorMessage}`);
+        resultsSection.classList.add('hidden');
         } finally {
             toggleLoading(false);
         }
