@@ -14,6 +14,20 @@
             <p class="header__subtitle">Your Friendly Bilingual Tutor / உங்கள் நட்பு இருமொழி ஆசிரியர்</p>
         </header>
 
+        <section class="auth-section">
+            <h2>🔑 Login / Signup</h2>
+                <div id="auth-area">
+                    <input id="auth-email" placeholder="Email" class="form-control" />
+                    <input id="auth-pass" placeholder="Password" type="password" class="form-control" />
+                <div class="auth-buttons">
+                    <button id="btn-signup" class="btn btn--secondary">Sign Up</button>
+                    <button id="btn-login" class="btn btn--primary">Login</button>
+                    <button id="btn-logout" class="btn btn--danger" style="display:none">Logout</button>
+                </div>
+                <p id="auth-msg" class="auth-msg"></p>
+            </div>
+        </section>
+
         <!-- Input Section -->
         <section class="input-section">
             <div class="input-container">
@@ -126,6 +140,47 @@
             <p>Made with ❤️ for Indian Students | இந்திய மாணவர்களுக்காக அன்புடன் உருவாக்கப்பட்டது</p>
         </footer>
     </div>
+
+    <script type="module">
+    import { signUp, login, getSession, setupAuthListener } from './js/auth.js'
+    import { supabase } from './js/supabaseClient.js'
+
+    const $email = document.getElementById('auth-email')
+    const $pass = document.getElementById('auth-pass')
+    const $msg = document.getElementById('auth-msg')
+
+    document.getElementById('btn-signup').addEventListener('click', async () => {
+        try {
+        await signUp($email.value, $pass.value)
+        $msg.innerText = 'Signup successful! Check your email to confirm.'
+        } catch (e) {
+        $msg.innerText = e.message
+        }
+    })
+
+    document.getElementById('btn-login').addEventListener('click', async () => {
+        try {
+        await login($email.value, $pass.value)
+        $msg.innerText = 'Logged in!'
+        } catch (e) {
+        $msg.innerText = e.message
+        }
+    })
+
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+        await supabase.auth.signOut()
+        $msg.innerText = 'Logged out.'
+    })
+
+    // Update UI based on auth state
+    setupAuthListener((event, session) => {
+        const loggedIn = !!session?.user
+        document.getElementById('btn-logout').style.display = loggedIn ? 'inline-block' : 'none'
+        // Optional: hide study input until login
+        document.querySelector('.input-section').style.display = loggedIn ? 'block' : 'none'
+    })
+    </script>
+
 
     <script src="app.js"></script>
 </body>
