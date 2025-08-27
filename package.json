@@ -1,0 +1,25 @@
+{
+  "name": "ai-study-buddy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suryakumar07/ai-study-buddy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/suryakumar07/ai-study-buddy/issues"
+  },
+  "homepage": "https://github.com/suryakumar07/ai-study-buddy#readme",
+  "description": "",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
+  }
+}

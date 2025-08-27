@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Buddy - Your Friendly Bilingual Tutor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="header__title">AI Study Buddy 📚</h1>
+            <p class="header__subtitle">Your Friendly Bilingual Tutor / உங்கள் நட்பு இருமொழி ஆசிரியர்</p>
+        </header>
+
+        <!-- Input Section -->
+        <section class="input-section">
+            <div class="input-container">
+                <label for="query-input" class="form-label">What would you like to learn today?</label>
+                <textarea 
+                    id="query-input" 
+                    class="form-control query-textarea" 
+                    placeholder="Ask me anything! Type your question, concept, or paste text here... / என்னிடம் எதையும் கேளுங்கள்! உங்கள் கேள்வி அல்லது கருத்தை இங்கே தட்டச்சு செய்யுங்கள்..."
+                    rows="4"
+                ></textarea>
+                <div class="input-helper">
+                    <span class="character-count">0 characters</span>
+                    <div class="sample-topics">
+                        <span>Try: </span>
+                        <button class="sample-btn" data-topic="Photosynthesis">Photosynthesis</button>
+                        <button class="sample-btn" data-topic="Pythagorean Theorem">Pythagorean Theorem</button>
+                        <button class="sample-btn" data-topic="Indian Independence Movement">Independence Movement</button>
+                    </div>
+                </div>
+                <button id="submit-btn" class="btn btn--primary btn--lg submit-button">
+                    <span class="submit-text">Get Help! 🚀</span>
+                    <span class="loading-text hidden">Learning... 📖</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loading-indicator hidden">
+            <div class="loading-spinner"></div>
+            <p>Processing your query... / உங்கள் கேள்வியைச் செயல்படுத்துகிறது...</p>
+        </div>
+
+        <!-- Results Section -->
+        <section id="results-section" class="results-section hidden">
+            <!-- Simple Explanation -->
+            <div class="result-block">
+                <h2 class="result-title">📖 Simple Explanation / எளிய விளக்கம்</h2>
+                <div class="explanation-content">
+                    <div class="explanation-english">
+                        <h3>English:</h3>
+                        <p id="explanation-en"></p>
+                    </div>
+                    <div class="explanation-tamil">
+                        <h3>தமிழ்:</h3>
+                        <p id="explanation-ta"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flashcards -->
+            <div class="result-block">
+                <h2 class="result-title">📝 Flashcards / ஃபிளாஷ் கார்டுகள்</h2>
+                <div id="flashcards-container" class="flashcards-container">
+                    <!-- Flashcards will be dynamically inserted here -->
+                </div>
+            </div>
+
+            <!-- Practice Questions -->
+            <div class="result-block">
+                <h2 class="result-title">🎯 Practice Questions / பயிற்சி கேள்விகள்</h2>
+                
+                <!-- MCQ Section -->
+                <div class="question-section">
+                    <h3>Multiple Choice Questions (3 questions):</h3>
+                    <div id="mcq-container" class="mcq-container">
+                        <!-- MCQ questions will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Short Answer Section -->
+                <div class="question-section">
+                    <h3>Short Answer Questions (2-3 marks each):</h3>
+                    <div id="short-answer-container" class="short-answer-container">
+                        <!-- Short answer questions will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Long Answer Section -->
+                <div class="question-section">
+                    <h3>Long Answer Question (5 marks):</h3>
+                    <div id="long-answer-container" class="long-answer-container">
+                        <!-- Long answer question will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Revision -->
+            <div class="result-block">
+                <h2 class="result-title">⚡ Quick Revision / விரைவு திருப்புதல்</h2>
+                <div class="quick-revision-content">
+                    <div class="revision-english">
+                        <h3>English:</h3>
+                        <p id="revision-en"></p>
+                    </div>
+                    <div class="revision-tamil">
+                        <h3>தமிழ்:</h3>
+                        <p id="revision-ta"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Success Message -->
+            <div class="success-message">
+                <p>🎉 Great job! Keep learning and you'll ace your exams! / சிறப்பு! தொடர்ந்து கற்றுக்கொண்டு உங்கள் தேர்வுகளில் வெற்றி பெறுங்கள்!</p>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ❤️ for Indian Students | இந்திய மாணவர்களுக்காக அன்புடன் உருவாக்கப்பட்டது</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
