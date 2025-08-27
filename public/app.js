@@ -1,3 +1,7 @@
+// public/app.js
+import { supabase } from "./js/supabaseClient.js";
+import { getSession, setupAuthListener, login, signUp } from "./js/auth.js";
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Element Selections ---
     const queryInput = document.getElementById('query-input');
@@ -7,6 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingIndicator = document.getElementById('loading-indicator');
     const resultsSection = document.getElementById('results-section');
 
+    // Auth elements (ensure these exist in your index.html as suggested)
+    const authEmail = document.getElementById('auth-email');
+    const authPass = document.getElementById('auth-pass');
+    const btnSignup = document.getElementById('btn-signup');
+    const btnLogin = document.getElementById('btn-login');
+    const btnLogout = document.getElementById('btn-logout');
+    const authMsg = document.getElementById('auth-msg');
+
     // Result containers
     const explanationEn = document.getElementById('explanation-en');
     const explanationTa = document.getElementById('explanation-ta');
@@ -14,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const mcqContainer = document.getElementById('mcq-container');
     const shortAnswerContainer = document.getElementById('short-answer-container');
     const longAnswerContainer = document.getElementById('long-answer-container');
-    // CHANGED: The ID in the HTML is 'revision-en', not 'quickRevision-en'
     const revisionEn = document.getElementById('revision-en');
     const revisionTa = document.getElementById('revision-ta');
 
@@ -28,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle form submission
     submitBtn.addEventListener('click', handleQuerySubmit);
-    
+
     // Allow pressing Enter to submit
     queryInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -46,11 +57,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Signup/Login/Logout handlers
+    if (btnSignup) btnSignup.addEventListener('click', async () => {
+        try {
+            authMsg.textContent = 'Signing up...';
+            await signUp(authEmail.value, authPass.value);
+            authMsg.textContent = 'Signup OK — check your email for confirmation if required.';
+        } catch (err) {
+            authMsg.textContent = err.message || 'Signup failed';
+        }
+    });
+
+    if (btnLogin) btnLogin.addEventListener('click', async () => {
+        try {
+            authMsg.textContent = 'Logging in...';
+            await login(authEmail.value, authPass.value);
+            authMsg.textContent = 'Logged in!';
+        } catch (err) {
+            authMsg.textContent = err.message || 'Login failed';
+        }
+    });
+
+    if (btnLogout) btnLogout.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        authMsg.textContent = 'Logged out';
+    });
+
+    // Update UI on session changes
+    setupAuthListener((session) => {
+        const loggedIn = !!session?.user;
+        if (btnLogout) btnLogout.style.display = loggedIn ? 'inline-block' : 'none';
+        // show/hide input section based on login
+        const inputSection = document.querySelector('.input-section');
+        if (inputSection) inputSection.style.display = loggedIn ? 'block' : 'none';
+    });
+
     // --- Core Functions ---
 
-    /**
-     * Handles the main logic of submitting the query to the backend.
-     */
     async function handleQuerySubmit() {
         const query = queryInput.value.trim();
         if (!query) {
@@ -62,17 +105,26 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsSection.classList.add('hidden');
 
         try {
-            // Call our backend API
+            // Get Supabase session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                alert('Please login first to continue.');
+                toggleLoading(false);
+                return;
+            }
+
+            // Attach access token
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
                 },
-                body: JSON.stringify({ query: query }),
+                body: JSON.stringify({ query }),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
             }
 
@@ -80,22 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
             displayResults(data);
 
         } catch (error) {
-        console.error('Error fetching AI response:', error);
-        // Check if the error object has our specific message from the backend
-        const errorMessage = error.message.includes('HTTP error') 
-            ? error.message 
-            : `Server Error: ${error.message}`;
-        alert(`An error occurred: ${errorMessage}`);
-        resultsSection.classList.add('hidden');
+            console.error('Error fetching AI response:', error);
+            const errorMessage = error.message || 'Server Error';
+            alert(`An error occurred: ${errorMessage}`);
+            resultsSection.classList.add('hidden');
         } finally {
             toggleLoading(false);
         }
     }
 
-    /**
-     * Toggles the loading state of the UI.
-     * @param {boolean} isLoading - True if loading, false otherwise.
-     */
     function toggleLoading(isLoading) {
         const submitText = document.querySelector('.submit-text');
         const loadingText = document.querySelector('.loading-text');
@@ -113,21 +158,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Populates the entire UI with the data received from the API.
-     * @param {object} data - The parsed JSON data from the backend.
-     */
     function displayResults(data) {
-        // Clear previous results
+        // Clear previous
         clearContainers();
-        
-        // 1. Simple Explanation (No change needed here)
-        explanationEn.innerHTML = data.explanation.english.replace(/\n/g, '<br>');
-        explanationTa.innerHTML = data.explanation.tamil.replace(/\n/g, '<br>');
+
+        // 1. Simple Explanation
+        if (data?.explanation?.english) explanationEn.innerHTML = data.explanation.english.replace(/\n/g, '<br>');
+        if (data?.explanation?.tamil) explanationTa.innerHTML = data.explanation.tamil.replace(/\n/g, '<br>');
 
         // 2. Flashcards
-        // CHANGED: Accessing new flattened properties like card.question, card.questionTamil
-        data.flashcards.forEach(card => {
+        (data.flashcards || []).forEach(card => {
             const flashcardEl = document.createElement('div');
             flashcardEl.className = 'flashcard';
             flashcardEl.tabIndex = 0;
@@ -151,74 +191,46 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             flashcardEl.addEventListener('click', () => flashcardEl.classList.toggle('flipped'));
             flashcardEl.addEventListener('keydown', (e) => {
-                 if (e.key === 'Enter' || e.key === ' ') {
-                    flashcardEl.classList.toggle('flipped')
-                 }
+                 if (e.key === 'Enter' || e.key === ' ') flashcardEl.classList.toggle('flipped');
             });
             flashcardsContainer.appendChild(flashcardEl);
         });
 
-        // 3. Practice Questions - MCQs
-        // CHANGED: Key updated from 'mcqs' to 'mcq'. Properties updated (e.g., question_en -> question).
-        // ADDED: Rendering for both English and Tamil options.
-        data.practiceQuestions.mcq.forEach((mcq, index) => {
-            // Create separate lists for English and Tamil options
-            const enOptionsHtml = mcq.options.map((opt, i) => 
-                `<li data-correct="${i === mcq.correct}">${i + 1}. ${opt}</li>`
-            ).join('');
-            const taOptionsHtml = mcq.optionsTamil.map((opt, i) => 
-                `<li data-correct="${i === mcq.correct}">${i + 1}. ${opt}</li>`
-            ).join('');
+        // 3. MCQs
+        (data?.practiceQuestions?.mcq || []).forEach((mcq, index) => {
+            const enOptionsHtml = mcq.options.map((opt, i) => `<li data-correct="${i === mcq.correct}">${i + 1}. ${opt}</li>`).join('');
+            const taOptionsHtml = mcq.optionsTamil.map((opt, i) => `<li data-correct="${i === mcq.correct}">${i + 1}. ${opt}</li>`).join('');
 
             const mcqEl = createQuestionElement(
                 `MCQ ${index + 1}`,
                 mcq.question,
                 mcq.questionTamil,
-                // Combine both lists into the additional HTML
                 `<h5>Options:</h5><ul class="mcq-options">${enOptionsHtml}</ul>
                  <h5>விருப்பங்கள்:</h5><ul class="mcq-options">${taOptionsHtml}</ul>`
             );
             mcqContainer.appendChild(mcqEl);
         });
 
-        // 4. Practice Questions - Short Answer
-        // CHANGED: Key updated from 'shortAnswer' to 'short'. Properties updated.
-        data.practiceQuestions.short.forEach((sa, index) => {
-            const saEl = createQuestionElement(
-                `Short Answer ${index + 1} (${sa.marks} marks)`,
-                sa.question,
-                sa.questionTamil
-            );
+        // 4. Short answers
+        (data?.practiceQuestions?.short || []).forEach((sa, index) => {
+            const saEl = createQuestionElement(`Short Answer ${index + 1} (${sa.marks} marks)`, sa.question, sa.questionTamil);
             shortAnswerContainer.appendChild(saEl);
         });
 
-        // 5. Practice Questions - Long Answer
-        // CHANGED: Key from 'longAnswer' to 'long'. It's now an OBJECT, not an array, so we REMOVE the loop.
-        const longAnswer = data.practiceQuestions.long;
-        const laEl = createQuestionElement(
-            `Long Answer Question (${longAnswer.marks} marks)`,
-            longAnswer.question,
-            longAnswer.questionTamil
-        );
-        longAnswerContainer.appendChild(laEl);
-        
-        // 6. Quick Revision
-        // CHANGED: Key updated from 'revision' to 'quickRevision'.
-        revisionEn.innerHTML = data.quickRevision.english.replace(/\n/g, '<br>');
-        revisionTa.innerHTML = data.quickRevision.tamil.replace(/\n/g, '<br>');
+        // 5. Long answer (object)
+        const longAnswer = data?.practiceQuestions?.long;
+        if (longAnswer) {
+            const laEl = createQuestionElement(`Long Answer Question (${longAnswer.marks} marks)`, longAnswer.question, longAnswer.questionTamil);
+            longAnswerContainer.appendChild(laEl);
+        }
 
-        // Finally, show the results
+        // 6. Quick revision
+        if (data?.quickRevision?.english) revisionEn.innerHTML = data.quickRevision.english.replace(/\n/g, '<br>');
+        if (data?.quickRevision?.tamil) revisionTa.innerHTML = data.quickRevision.tamil.replace(/\n/g, '<br>');
+
         resultsSection.classList.remove('hidden');
     }
-    
-    /**
-     * A helper function to create the HTML structure for a practice question.
-     * @param {string} title - The title of the question (e.g., "MCQ 1").
-     * @param {string} qEn - The English question text.
-     * @param {string} qTa - The Tamil question text.
-     * @param {string} [additionalHtml=''] - Optional additional HTML for answers/options.
-     * @returns {HTMLElement} - The fully constructed question element.
-     */
+
     function createQuestionElement(title, qEn, qTa, additionalHtml = '') {
         const questionEl = document.createElement('div');
         questionEl.className = 'question-item';
@@ -239,9 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return questionEl;
     }
 
-    /**
-     * Clears all dynamic content containers before a new query.
-     */
     function clearContainers() {
         explanationEn.textContent = '';
         explanationTa.textContent = '';

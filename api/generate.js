@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // must be service role (keep secret!)
+  process.env.SUPABASE_SERVICE_ROLE_KEY // MUST be service role key and kept secret on server
 );
 
 const systemPrompt = `
@@ -61,33 +61,30 @@ Rules:
 `;
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
-  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
 
   try {
-    // ✅ Validate Supabase Auth Token
+    // 1) Auth header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing or invalid authorization header" });
     }
-
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
+    // 2) Validate token with Supabase
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 
-    // ✅ Safe parameter handling
+    // 3) Validate query parameter
     const { query } = req.body;
     if (typeof query !== "string" || query.trim().length === 0) {
       return res.status(400).json({ error: "Query must be a non-empty string" });
     }
+    const sanitizedQuery = query.replace(/[{}$<>]/g, "");
 
-    const sanitizedQuery = query.replace(/[{}$<>]/g, ""); // simple sanitization
-
-    // ✅ Call Gemini
+    // 4) Call Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -95,22 +92,20 @@ export default async function handler(req, res) {
 
     const result = await model.generateContent(fullPrompt);
     const response = await result.response;
-    let text = response.text();
+    const text = response.text();
 
-    // ✅ Extract JSON safely
+    // 5) Extract & parse JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON object found in the AI response.");
-    }
+    if (!jsonMatch) throw new Error("No valid JSON object found in the AI response.");
     const jsonString = jsonMatch[0];
-
     const data = JSON.parse(jsonString);
 
+    // Optional: increment request counter for user here (next step)
     res.status(200).json(data);
   } catch (error) {
     console.error("API Error:", error);
-    res
-      .status(500)
-      .json({ error: error.message || "An unknown server error occurred." });
+    const message = error?.message || "Unknown server error";
+    const status = error?.status || 500;
+    res.status(status).json({ error: message });
   }
 }
